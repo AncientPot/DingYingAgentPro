@@ -10,5 +10,14 @@ dist/
 # Environment
 .env
 
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+sessions.json.migrated
+
 # IDE
 .idea/
