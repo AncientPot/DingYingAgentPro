@@ -1,0 +1,18 @@
+[project]
+name = "DingYingAgentPro"
+version = "0.1.0"
+dependencies = [
+	"langgraph",
+    "pywin32",
+    "pywinauto",
+    "python-dotenv",
+    "langchain_community",
+    "langchain_deepseek",
+    "langchain_tavily",
+    "fastapi[standard]",
+    "aiosqlite",
+    "langgraph.checkpoint.sqlite"
+]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
