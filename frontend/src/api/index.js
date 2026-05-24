@@ -56,12 +56,12 @@ export async function* streamMessage(sessionName, message, signal) {
     buffer = lines.pop() || ''
     for (const line of lines) {
       if (line.startsWith('data: ')) {
-        yield JSON.parse(line.slice(6))
+        try { yield JSON.parse(line.slice(6)) } catch (e) { console.warn('SSE parse error, skipping:', line.slice(0, 80)) }
       }
     }
   }
   // flush remaining
   if (buffer.startsWith('data: ')) {
-    yield JSON.parse(buffer.slice(6))
+    try { yield JSON.parse(buffer.slice(6)) } catch (e) { console.warn('SSE parse error in flush, skipping') }
   }
 }

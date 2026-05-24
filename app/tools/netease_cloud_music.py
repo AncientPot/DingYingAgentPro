@@ -59,6 +59,11 @@ def get_pid_by_window_class(exe_path: str, class_name: str, wait_time: int = 7) 
         raise RuntimeError(f"获取PID失败: {e}")
 
 
+class UIElementError(RuntimeError):
+    """UI 控件操作失败异常，用于精确异常匹配，避免字符串耦合。"""
+    pass
+
+
 def _safe_invoke(element, desc, retries=2):
     """安全调用 UI 元素的 invoke()，失败时重试并给出友好错误。"""
     last_error = None
@@ -71,7 +76,7 @@ def _safe_invoke(element, desc, retries=2):
             last_error = e
             if attempt < retries:
                 time.sleep(0.3)
-    raise RuntimeError(f"无法操作{desc}（重试{retries}次后仍失败）")
+    raise UIElementError(f"无法操作{desc}（重试{retries}次后仍失败）")
 
 
 @tool
@@ -193,10 +198,10 @@ def control_netease_cloud_music(operation: str, song_name: Optional[str] = None)
                 "支持的操作有: play_pause, next, previous, search_and_play, like, unlike, play_liked, switch_mode。"
             )
 
+    except UIElementError as e:
+        return f"操作失败，网易云音乐窗口可能处于不可交互状态: {e}"
     except RuntimeError as e:
         error_msg = str(e)
-        if "无法操作" in error_msg:
-            return f"操作失败，网易云音乐窗口可能处于不可交互状态: {error_msg}"
         if "未找到目标窗口" in error_msg or "首次启动" in error_msg:
             return "网易云音乐正在启动中，请稍后再试，或再次调用本工具。"
         return f"操作执行失败: {error_msg}"

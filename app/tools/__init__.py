@@ -107,7 +107,7 @@ def list_available_tools(enabled_tools: Optional[list[str]] = None) -> list[dict
         list[dict]: 每个工具包含 name, display_name, description, enabled 字段。
     """
     available = _discover_modules()
-    enabled_set = set(enabled_tools or available)
+    enabled_set = set(enabled_tools) if enabled_tools is not None else set(available)
     result = []
 
     for module_name in available:

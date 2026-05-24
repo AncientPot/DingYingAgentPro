@@ -67,12 +67,14 @@ function setFieldValue(key, val) {
 }
 
 async function handleSave() {
-  // 只发送当前页面上可见的字段，排除 enabled_tools（在工具管理页维护）
+  // 只发送当前页面上可见且被用户修改过的字段
   const visibleKeys = fields.map(f => f.key)
   const payload = {}
   for (const key of visibleKeys) {
     const val = form.value[key]
     if (val === undefined || val === null) continue
+    // api_key 脱敏保护：如果值含 '*' 说明是脱敏值，用户未修改，跳过发送
+    if (key === 'api_key' && typeof val === 'string' && val.includes('*')) continue
     // 恢复数字类型
     if (key === 'temperature') payload[key] = parseFloat(val)
     else if (key === 'max_search_results') payload[key] = parseInt(val)

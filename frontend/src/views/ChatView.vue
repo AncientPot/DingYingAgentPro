@@ -73,11 +73,19 @@ async function handleSend(text) {
           break
         }
         case 'tool': {
-          const lastTC = aiMsg.toolCalls[aiMsg.toolCalls.length - 1]
-          if (lastTC && !lastTC.result) {
-            lastTC.result = evt.content
+          // 优先按 tool_call_id 匹配，其次按未填充结果的首个工具调用
+          const targetId = evt.tool_call_id
+          let matched = null
+          if (targetId) {
+            matched = aiMsg.toolCalls.find(t => t.id === targetId && !t.result)
+          }
+          if (!matched) {
+            matched = aiMsg.toolCalls.find(t => !t.result)
+          }
+          if (matched) {
+            matched.result = evt.content
           } else if (evt.tool_name) {
-            aiMsg.toolCalls.push({ name: evt.tool_name, args: {}, id: null, result: evt.content })
+            aiMsg.toolCalls.push({ name: evt.tool_name, args: {}, id: targetId, result: evt.content })
           }
           scrollToBottom()
           break

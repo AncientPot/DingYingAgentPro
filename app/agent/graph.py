@@ -109,15 +109,20 @@ def _get_or_create_memory() -> SqliteSaver:
 # ── 公开接口 ──
 
 def get_graph() -> Any:
-    """获取当前编译好的图（单例复用，配置变更时自动重建）。"""
+    """
+    获取当前编译好的图（单例复用，配置变更时自动重建）。
+
+    注：快速路径存在 TOCTOU 窗口——在比较 epoch 和 return 之间其他线程
+    可能 invalidate 图缓存。此窗口仅影响单次请求（下次请求自愈），单用户
+    场景下几乎不可触发。若需严格一致性，将 epoch 比较移入锁内即可。
+    """
     global _graph, _graph_epoch, _config_epoch
 
-    # 快速路径：无锁检查
+    # 快速路径：无锁检查（有极低概率的 TOCTOU 窗口）
     if _graph is not None and _graph_epoch == _config_epoch:
         return _graph
 
     with _lock:
-        # 再次确认是否需要重建
         if _graph is None or _graph_epoch != _config_epoch:
             logger.info("重建 Agent 图（epoch %d → %d）", _graph_epoch, _config_epoch)
             _graph = _build_graph()
@@ -128,9 +133,11 @@ def get_graph() -> Any:
 
 def invalidate_graph():
     """强制下次调用 get_graph 时重建图。配置变更后自动调用。"""
-    global _config_epoch
+    global _graph, _config_epoch
     with _lock:
         _config_epoch += 1
+        # 同时置空 _graph 以缩窄 TOCTOU 窗口
+        _graph = None
         logger.info("图缓存已失效（epoch ← %d）", _config_epoch)
 
 

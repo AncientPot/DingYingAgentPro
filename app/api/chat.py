@@ -31,6 +31,7 @@ def _serialize_stream_event(event) -> str:
         return json.dumps({
             "type": "tool",
             "tool_name": getattr(message, "name", "unknown"),
+            "tool_call_id": getattr(message, "tool_call_id", None),
             "content": message.content,
         }, ensure_ascii=False)
     else:

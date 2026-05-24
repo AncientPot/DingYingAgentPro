@@ -47,20 +47,22 @@ class SessionService:
         self._loaded = True
 
     def _sync(self):
-        """同步数据库与 JSON 会话映射。"""
+        """同步数据库与 JSON 会话映射（独立处理两侧孤儿，不相交集合也能清理）。"""
         json_tids = set(self._name_to_tid.values())
 
-        if self._db_tids > json_tids:
-            # 数据库中有孤儿记录，删除
-            for tid in self._db_tids - json_tids:
-                self._checkpointer.delete_thread(tid)
-                self._db_tids.discard(tid)
+        # 数据库中有但 JSON 中没有的孤儿记录 → 从 SQLite 删除
+        db_only = self._db_tids - json_tids
+        for tid in db_only:
+            self._checkpointer.delete_thread(tid)
+            self._db_tids.discard(tid)
 
-        elif self._db_tids < json_tids:
-            # JSON 中有孤儿记录，移除
-            for tid in json_tids - self._db_tids:
-                name_to_remove = next(k for k, v in self._name_to_tid.items() if v == tid)
+        # JSON 中有但数据库中没有的孤儿记录 → 从 JSON 移除
+        json_only = json_tids - self._db_tids
+        for tid in json_only:
+            name_to_remove = next((k for k, v in self._name_to_tid.items() if v == tid), None)
+            if name_to_remove:
                 del self._name_to_tid[name_to_remove]
+        if json_only:
             self._save_json()
 
     def _save_json(self):
