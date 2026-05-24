@@ -22,16 +22,18 @@ CONFIG_DESCRIPTIONS = {
 
 
 def get_settings() -> list[dict]:
-    """获取所有可配置项及其当前值（敏感字段已脱敏）。"""
+    """获取所有可配置项及其当前值（敏感字段已脱敏，保留原生类型）。"""
     config = get_masked_config()
-    return [
-        {
+    result = []
+    for key in CONFIG_DESCRIPTIONS:
+        raw = config.get(key, "")
+        # 保留原生类型（list 不转 str），仅对前端展示不友好的类型做转换
+        result.append({
             "key": key,
-            "value": str(config.get(key, "")),
+            "value": raw,
             "description": CONFIG_DESCRIPTIONS.get(key, ""),
-        }
-        for key in CONFIG_DESCRIPTIONS
-    ]
+        })
+    return result
 
 
 def update_settings(partial: dict) -> dict:
@@ -41,7 +43,6 @@ def update_settings(partial: dict) -> dict:
     Returns:
         dict: 更新后的完整配置（脱敏版）。
     """
-    # 过滤掉未知键和 None 值
     allowed_keys = set(CONFIG_DESCRIPTIONS.keys())
     filtered = {k: v for k, v in partial.items() if k in allowed_keys and v is not None}
     if filtered:

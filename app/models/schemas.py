@@ -1,7 +1,7 @@
 """Pydantic 请求/响应模型。"""
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Any, Optional
 
 
 # ── 聊天 ──
@@ -38,7 +38,7 @@ class SessionListResponse(BaseModel):
 
 class ConfigItem(BaseModel):
     key: str = Field(..., description="配置键")
-    value: str = Field(..., description="配置值（敏感字段已脱敏）")
+    value: Any = Field(..., description="配置值（原生类型，敏感字段已脱敏）")
     description: str = ""
 
 
@@ -71,6 +71,14 @@ class ToolListResponse(BaseModel):
 
 class ToolToggleRequest(BaseModel):
     enabled: bool = Field(..., description="是否启用")
+
+
+# ── 工具测试 ──
+
+class ToolTestResponse(BaseModel):
+    ok: bool = Field(..., description="测试是否通过")
+    message: str = Field(..., description="测试结果描述")
+    details: str = Field("", description="详细诊断信息")
 
 
 # ── 通用 ──

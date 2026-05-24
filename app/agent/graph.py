@@ -4,6 +4,7 @@ Agent 图构建与生命周期管理。
 构建 LangGraph 有状态图，支持：
 - 根据运行时配置动态重建（模型参数、系统提示词、启用工具集变更时自动重建）
 - 单例缓存，避免重复构建
+- 使用版本计数器替代内容哈希，消除碰撞风险
 """
 
 from __future__ import annotations
@@ -24,52 +25,53 @@ from app.tools import load_tools
 
 logger = logging.getLogger(__name__)
 
+
 # ── 状态 ──
 
 class State(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
 
-# ── 单例缓存 ──
+# ── 版本式缓存（替代哈希） ──
 
 _lock = threading.Lock()
 _graph: Optional[Any] = None
-_config_hash: int = 0
+
+# 单调递增的配置版本号，每次 invalidate 自增。
+# 初始值 0 表示"从未构建"，1 表示"至少构建过一次"。
+_config_epoch: int = 0   # 最近一次 invalidate 写入的版本
+_graph_epoch: int = 0    # 最近一次 build 使用的版本
 
 
-def _compute_config_hash(config: dict) -> int:
-    """计算配置组合的哈希值，判断是否需要重建图。"""
-    key_parts = (
-        config.get("model_name", ""),
-        config.get("temperature", 0),
-        config.get("api_key", ""),
-        config.get("base_url", ""),
-        config.get("system_prompt", ""),
-        tuple(sorted(config.get("enabled_tools", []))),
-    )
-    return hash(key_parts)
+def _build_graph() -> Any:
+    """根据当前配置构建并编译图（调用方需持有 _lock）。"""
+    # 重新读取最新配置（不从参数传入，确保闭包捕获最新值）
+    config = get_config()
 
-
-def _build_graph(config: dict) -> Any:
-    """根据配置构建并编译图（不缓存）。"""
-    # 加载启用的工具
     tool_list = load_tools(config.get("enabled_tools"))
-    logger.info(f"构建图 — 模型: {config['model_name']}, 温度: {config['temperature']}, 工具数: {len(tool_list)}")
+    model_name = config.get("model_name", "deepseek-chat")
+    temperature = config.get("temperature", 0.7)
+    system_prompt = config.get("system_prompt", "你是一个AI助手，请尽你所能回答我的问题。")
+
+    logger.info(
+        "构建图 — 模型: %s, 温度: %s, 工具数: %d, 系统提示词: %s",
+        model_name, temperature, len(tool_list), system_prompt[:40]
+    )
 
     # 创建 LLM
-    llm_kwargs = {"model": config["model_name"], "temperature": config["temperature"]}
+    llm_kwargs = {"model": model_name, "temperature": temperature}
     if config.get("api_key"):
         llm_kwargs["api_key"] = config["api_key"]
     if config.get("base_url"):
         llm_kwargs["api_base"] = config["base_url"]
     llm = ChatDeepSeek(**llm_kwargs)
 
-    system_prompt = config.get("system_prompt", "你是一个AI助手。")
-
-    # 定义 Agent 节点
+    # 定义 Agent 节点 —— system_prompt 通过闭包捕获
     def dingyingagent(state: State) -> dict:
         llm_with_tools = llm.bind_tools(tool_list)
-        response = llm_with_tools.invoke([SystemMessage(content=system_prompt)] + state["messages"])
+        response = llm_with_tools.invoke(
+            [SystemMessage(content=system_prompt)] + state["messages"]
+        )
         return {"messages": [response]}
 
     # 构建图
@@ -80,14 +82,13 @@ def _build_graph(config: dict) -> Any:
     builder.add_edge("tools", "Agent")
     builder.add_edge(START, "Agent")
 
-    # 编译（使用内存检查点，SQLite 在 get_graph 中处理）
     memory = _get_or_create_memory()
     return builder.compile(checkpointer=memory)
 
 
 # ── SQLite 检查点持久化 ──
 
-_memory: SqliteSaver | None = None
+_memory: Optional[SqliteSaver] = None
 
 
 def get_checkpointer() -> SqliteSaver:
@@ -102,38 +103,35 @@ def get_checkpointer() -> SqliteSaver:
 
 
 def _get_or_create_memory() -> SqliteSaver:
-    """内部使用：获取检查点实例。"""
     return get_checkpointer()
 
 
 # ── 公开接口 ──
 
 def get_graph() -> Any:
-    """
-    获取当前编译好的图（单例复用，配置变更时自动重建）。
-    此函数保证线程安全。
-    """
-    global _graph, _config_hash
-    config = get_config()
-    current_hash = _compute_config_hash(config)
+    """获取当前编译好的图（单例复用，配置变更时自动重建）。"""
+    global _graph, _graph_epoch, _config_epoch
 
-    if _graph is None or current_hash != _config_hash:
-        with _lock:
-            # 双重检查
-            if _graph is None or current_hash != _config_hash:
-                _graph = _build_graph(config)
-                _config_hash = current_hash
-                logger.info("图已重建（配置变更）")
+    # 快速路径：无锁检查
+    if _graph is not None and _graph_epoch == _config_epoch:
+        return _graph
+
+    with _lock:
+        # 再次确认是否需要重建
+        if _graph is None or _graph_epoch != _config_epoch:
+            logger.info("重建 Agent 图（epoch %d → %d）", _graph_epoch, _config_epoch)
+            _graph = _build_graph()
+            _graph_epoch = _config_epoch
 
     return _graph
 
 
 def invalidate_graph():
-    """强制下次调用 get_graph 时重建图。"""
-    global _config_hash
+    """强制下次调用 get_graph 时重建图。配置变更后自动调用。"""
+    global _config_epoch
     with _lock:
-        _config_hash = 0
-        logger.info("图缓存已失效，下次请求时将重建")
+        _config_epoch += 1
+        logger.info("图缓存已失效（epoch ← %d）", _config_epoch)
 
 
 # ── 注册配置变更回调 ──

@@ -61,6 +61,44 @@ def load_tools(enabled_tools: Optional[list[str]] = None):
     return tools
 
 
+def test_tool(module_name: str) -> dict:
+    """
+    测试指定工具是否可用。
+
+    Returns:
+        dict: {"ok": bool, "message": str, "details": str}
+    """
+    available = _discover_modules()
+    if module_name not in available:
+        return {"ok": False, "message": f"工具 '{module_name}' 不存在", "details": ""}
+
+    try:
+        module = importlib.import_module(f"app.tools.{module_name}")
+    except Exception as e:
+        return {"ok": False, "message": f"导入失败: {e}", "details": str(e)}
+
+    # 如果工具模块提供了 test_tool 函数，优先使用
+    if hasattr(module, "test_tool"):
+        try:
+            return module.test_tool()
+        except Exception as e:
+            return {"ok": False, "message": f"工具自检失败: {e}", "details": str(e)}
+
+    # 否则只验证 get_tool() 能否正常调用
+    if not hasattr(module, "get_tool"):
+        return {"ok": False, "message": "工具模块缺少 get_tool() 函数", "details": ""}
+
+    try:
+        tool = module.get_tool()
+        return {
+            "ok": True,
+            "message": f"工具 '{getattr(tool, 'name', module_name)}' 加载正常",
+            "details": getattr(tool, "description", ""),
+        }
+    except Exception as e:
+        return {"ok": False, "message": f"工具实例化失败: {e}", "details": str(e)}
+
+
 def list_available_tools(enabled_tools: Optional[list[str]] = None) -> list[dict]:
     """
     列出所有可用工具及其元信息。

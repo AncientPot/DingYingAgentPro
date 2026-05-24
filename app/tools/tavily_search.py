@@ -39,6 +39,22 @@ def get_tool():
     return _get_search()
 
 
+def test_tool() -> dict:
+    """自检：验证 API Key 是否配置，并尝试一次搜索请求。"""
+    api_key = os.getenv("TAVILY_API_KEY")
+    if not api_key:
+        return {"ok": False, "message": "未配置 TAVILY_API_KEY 环境变量", "details": "请在 .env 文件中添加 TAVILY_API_KEY"}
+
+    try:
+        search = _get_search()
+        result = search.invoke("test")
+        if result:
+            return {"ok": True, "message": "Tavily 搜索工具正常（API 连通测试通过）", "details": f"测试搜索返回了结果，API Key: {api_key[:8]}..."}
+        return {"ok": False, "message": "Tavily 搜索返回空结果", "details": "API 连通但搜索无返回"}
+    except Exception as e:
+        return {"ok": False, "message": f"Tavily 搜索测试失败: {e}", "details": str(e)}
+
+
 # 配置变更时重置缓存，确保下次获取的是新参数实例
 def _on_config_changed(_new_config):
     global _last_max_results

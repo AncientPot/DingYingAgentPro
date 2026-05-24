@@ -7,7 +7,7 @@
 """
 
 from app.core.config import get_config, update_config
-from app.tools import list_available_tools
+from app.tools import list_available_tools, test_tool as _test_tool
 
 
 def get_tools_status() -> list[dict]:
@@ -45,3 +45,8 @@ def set_tool_enabled(tool_name: str, enabled: bool) -> bool:
 
     update_config({"enabled_tools": enabled_tools})
     return True
+
+
+def test_tool(name: str) -> dict:
+    """测试指定工具是否可用。"""
+    return _test_tool(name)

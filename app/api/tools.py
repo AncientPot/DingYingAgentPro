@@ -4,8 +4,8 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from app.models.schemas import MessageResponse, ToolInfo, ToolListResponse, ToolToggleRequest
-from app.services.tool_service import get_tools_status, set_tool_enabled
+from app.models.schemas import MessageResponse, ToolInfo, ToolListResponse, ToolTestResponse, ToolToggleRequest
+from app.services.tool_service import get_tools_status, set_tool_enabled, test_tool as _svc_test_tool
 
 logger = logging.getLogger(__name__)
 
@@ -34,3 +34,21 @@ def toggle_tool(tool_name: str, req: ToolToggleRequest):
     if matched is None:
         raise HTTPException(status_code=500, detail="工具状态查询失败。")
     return ToolInfo(**matched)
+
+
+@router.post("/{tool_name}/test", response_model=ToolTestResponse)
+def test_tool(tool_name: str):
+    """
+    测试指定工具是否可用。
+
+    会根据工具类型执行不同检测：
+    - calculator: 执行基本运算验证
+    - tavily_search: 验证 API Key 并尝试搜索
+    - netease_cloud_music: 检查可执行文件和窗口
+    - 其他: 验证模块导入和实例化
+    """
+    result = _svc_test_tool(tool_name)
+    if not result.get("ok"):
+        # 仍返回 200，前端根据 ok 字段判断工具状态
+        return ToolTestResponse(**result)
+    return ToolTestResponse(**result)

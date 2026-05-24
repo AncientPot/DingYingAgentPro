@@ -22,6 +22,9 @@ sessions.json.migrated
 # IDE
 .idea/
 
+# Frontend
+node_modules/
+
 # Runtime data
 checkpoints.sqlite*
 config.json
