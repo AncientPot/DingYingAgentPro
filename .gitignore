@@ -21,3 +21,8 @@ sessions.json.migrated
 
 # IDE
 .idea/
+
+# Runtime data
+checkpoints.sqlite*
+config.json
+sessions.json
