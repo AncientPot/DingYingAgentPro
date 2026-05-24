@@ -1,5 +1,5 @@
 <script setup>
-import { ref, nextTick, onMounted, watch, onActivated, onDeactivated } from 'vue'
+import { ref, nextTick, onMounted, watch } from 'vue'
 import { useSessionStore } from '../stores/session'
 import { streamMessage } from '../api'
 import SessionSidebar from '../components/SessionSidebar.vue'
@@ -12,13 +12,9 @@ const messages = ref([])
 const isStreaming = ref(false)
 const abortController = ref(null)
 const chatContainer = ref(null)
-const initialLoad = ref(true)
 
-// 当前会话名变化时切换消息
 watch(() => store.activeName, (name, oldName) => {
-  if (name !== oldName) {
-    messages.value = []
-  }
+  if (name !== oldName) messages.value = []
 })
 
 onMounted(async () => {
@@ -28,7 +24,6 @@ onMounted(async () => {
   } else {
     await store.selectOrCreate('默认')
   }
-  initialLoad.value = false
 })
 
 function scrollToBottom() {
@@ -38,18 +33,32 @@ function scrollToBottom() {
   })
 }
 
+// 当前正在流式输出的 AI 文本段索引（-1 表示无活跃段）
+let activeAiIdx = -1
+
+function startAiSegment() {
+  messages.value.push({ type: 'ai', content: '', streaming: true })
+  activeAiIdx = messages.value.length - 1
+  return messages.value[activeAiIdx]
+}
+
+function finishAiSegment() {
+  if (activeAiIdx >= 0 && activeAiIdx < messages.value.length) {
+    messages.value[activeAiIdx].streaming = false
+  }
+  activeAiIdx = -1
+}
+
 async function handleSend(text) {
   if (!store.activeName || isStreaming.value) return
 
-  // 添加用户消息
-  messages.value.push({ role: 'user', content: text, toolCalls: [] })
+  // 用户消息
+  messages.value.push({ type: 'user', content: text })
 
-  // 添加 AI 占位消息 —— 关键：push 后再从数组中取引用，确保拿到 Vue 响应式代理
-  messages.value.push({ role: 'assistant', content: '', toolCalls: [], streaming: true })
-  const aiMsg = messages.value[messages.value.length - 1]
+  // 第一个 AI 文本段
+  const seg = startAiSegment()
   scrollToBottom()
 
-  // SSE 流式接收
   isStreaming.value = true
   const controller = new AbortController()
   abortController.value = controller
@@ -58,57 +67,84 @@ async function handleSend(text) {
     for await (const evt of streamMessage(store.activeName, text, controller.signal)) {
       switch (evt.type) {
         case 'chunk': {
-          aiMsg.content += evt.content || ''
+          // 追加到当前 AI 文本段
+          if (activeAiIdx >= 0 && activeAiIdx < messages.value.length) {
+            messages.value[activeAiIdx].content += evt.content || ''
+          }
+
+          // 发现新的工具调用 — 结束当前 AI 段，插入 tool 卡片，再开新 AI 段
           if (evt.tool_calls) {
             for (const tc of evt.tool_calls) {
-              if (tc.name) {
-                const existing = aiMsg.toolCalls.find(t => t.id === tc.id)
-                if (!existing) {
-                  aiMsg.toolCalls.push({ name: tc.name, args: tc.args || {}, id: tc.id, result: null })
-                }
-              }
+              if (!tc.name) continue
+              // 检查 tool 卡片是否已存在（按 ID 去重）
+              const exists = messages.value.find(m => m.type === 'tool' && m.id === tc.id)
+              if (exists) continue
+              // 结束当前流式 AI 段
+              finishAiSegment()
+              // 插入 tool 卡片
+              messages.value.push({
+                type: 'tool',
+                name: tc.name,
+                id: tc.id,
+                args: tc.args || {},
+                result: null,
+              })
+              // 开启新的 AI 文本段（等待后续 chunk 或 tool 结果）
+              startAiSegment()
             }
           }
           scrollToBottom()
           break
         }
         case 'tool': {
-          // 优先按 tool_call_id 匹配，其次按未填充结果的首个工具调用
+          // 工具返回结果 — 按 tool_call_id 匹配 tool 卡片
           const targetId = evt.tool_call_id
-          let matched = null
+          let card = null
           if (targetId) {
-            matched = aiMsg.toolCalls.find(t => t.id === targetId && !t.result)
+            card = messages.value.find(m => m.type === 'tool' && m.id === targetId && !m.result)
           }
-          if (!matched) {
-            matched = aiMsg.toolCalls.find(t => !t.result)
+          if (!card) {
+            card = messages.value.find(m => m.type === 'tool' && !m.result)
           }
-          if (matched) {
-            matched.result = evt.content
+          if (card) {
+            card.result = evt.content
           } else if (evt.tool_name) {
-            aiMsg.toolCalls.push({ name: evt.tool_name, args: {}, id: targetId, result: evt.content })
+            // 后端产生的 tool 事件但前端还没收到对应的 tool_call chunk
+            messages.value.push({
+              type: 'tool',
+              name: evt.tool_name,
+              id: targetId || null,
+              args: {},
+              result: evt.content,
+            })
           }
           scrollToBottom()
           break
         }
         case 'error': {
-          aiMsg.content = `错误: ${evt.content}`
-          aiMsg.streaming = false
+          if (activeAiIdx >= 0 && activeAiIdx < messages.value.length) {
+            messages.value[activeAiIdx].content += `\n错误: ${evt.content}`
+          }
+          finishAiSegment()
           break
         }
         case 'done': {
-          aiMsg.streaming = false
+          finishAiSegment()
           break
         }
       }
     }
   } catch (e) {
     if (e.name !== 'AbortError') {
-      aiMsg.content = `请求失败: ${e.message}`
+      if (activeAiIdx >= 0 && activeAiIdx < messages.value.length) {
+        messages.value[activeAiIdx].content += `\n请求失败: ${e.message}`
+      }
     }
-    aiMsg.streaming = false
+    finishAiSegment()
   } finally {
     isStreaming.value = false
     abortController.value = null
+    activeAiIdx = -1
     scrollToBottom()
   }
 }
@@ -116,8 +152,7 @@ async function handleSend(text) {
 function handleStop() {
   if (abortController.value) {
     abortController.value.abort()
-    const lastAI = [...messages.value].reverse().find(m => m.role === 'assistant')
-    if (lastAI) lastAI.streaming = false
+    finishAiSegment()
     isStreaming.value = false
   }
 }
@@ -127,10 +162,8 @@ function handleStop() {
   <div class="flex h-full">
     <SessionSidebar />
 
-    <!-- 聊天区 -->
     <div class="flex-1 flex flex-col min-w-0">
-      <!-- 消息列表 -->
-      <div ref="chatContainer" class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      <div ref="chatContainer" class="flex-1 overflow-y-auto px-6 py-4 space-y-3">
         <!-- 空状态 -->
         <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-white/25 select-none">
           <div class="w-16 h-16 rounded-2xl glass flex items-center justify-center mb-4">
@@ -140,23 +173,27 @@ function handleStop() {
           <p class="text-xs mt-1 text-white/15">输入消息，AI 将调用工具来回应你</p>
         </div>
 
-        <!-- 消息列表 -->
+        <!-- 交织渲染：用户消息 / AI 文本段 / 工具调用卡片 -->
         <template v-for="(msg, i) in messages" :key="i">
           <ChatMessage
-            :role="msg.role"
+            v-if="msg.type === 'user'"
+            :role="'user'"
+            :content="msg.content"
+          />
+          <ChatMessage
+            v-else-if="msg.type === 'ai'"
+            :role="'assistant'"
             :content="msg.content"
             :is-streaming="msg.streaming"
           />
           <ToolCallCard
-            v-for="(tc, j) in msg.toolCalls"
-            :key="`${i}-tc-${j}`"
-            :tool-name="tc.name"
-            :content="tc.result || JSON.stringify(tc.args, null, 2)"
+            v-else-if="msg.type === 'tool'"
+            :tool-name="msg.name"
+            :content="msg.result || JSON.stringify(msg.args, null, 2)"
           />
         </template>
       </div>
 
-      <!-- 输入栏 -->
       <div class="px-5 py-3 border-t border-white/[0.03] bg-base-900/50">
         <div class="max-w-3xl mx-auto flex items-end gap-3">
           <div class="flex-1">

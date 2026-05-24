@@ -6,7 +6,7 @@ defineProps({
   content: { type: String, default: '' },
 })
 
-const collapsed = ref(false)
+const collapsed = ref(true)
 </script>
 
 <template>

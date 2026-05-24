@@ -23,7 +23,7 @@ _DEFAULT_CONFIG = {
     "base_url": os.getenv("DEEPSEEK_BASE_URL", ""),
     "system_prompt": "你是一个AI助手，请尽你所能回答我的问题。",
     "max_search_results": 2,
-    "enabled_tools": ["calculator", "netease_cloud_music", "tavily_search"],
+    "enabled_tools": ["calculator", "netease_cloud_music", "tavily_search", "md_file_manager"],
 }
 
 _lock = threading.Lock()
