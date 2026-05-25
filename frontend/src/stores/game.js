@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import * as api from '../api'
 
 export const useGameStore = defineStore('game', () => {
@@ -27,7 +27,6 @@ export const useGameStore = defineStore('game', () => {
   const activeGameTool = ref(null)
   const gameThinkPrompt = ref('')
   const toolThinkPrompt = ref('')
-  const toolObstacleCount = ref(3)
 
   // 游戏工具结果通信（SnakeGame 等组件通过此字段获取 AI 工具调用结果）
   const lastToolResult = ref(null)
@@ -91,7 +90,6 @@ export const useGameStore = defineStore('game', () => {
       activeGameTool.value = data.active_game_tool || null
       gameThinkPrompt.value = data.game_think_prompt || ''
       toolThinkPrompt.value = data.tool_think_prompt || ''
-      toolObstacleCount.value = data.tool_obstacle_count ?? 3
     } catch (e) { /* ignore */ }
   }
 
@@ -120,9 +118,11 @@ export const useGameStore = defineStore('game', () => {
     } finally { aiThinking.value = false }
   }
 
-  function startAutoReply() {
+  async function startAutoReply() {
     stopAutoReply()
     if (autoInterval.value <= 0) return
+    await nextTick()  // 等待 GameCanvas 的 context 首次填充
+    triggerThink()
     autoTimer = setInterval(() => triggerThink(), autoInterval.value * 1000)
   }
 
@@ -169,7 +169,7 @@ export const useGameStore = defineStore('game', () => {
     gameMode, gameType, subMode,
     aiMessage, aiThinking, showAiPanel, prepMessages,
     sendPrepMessage,
-    autoInterval, activeGameTool, gameThinkPrompt, toolThinkPrompt, toolObstacleCount, gameTools,
+    autoInterval, activeGameTool, gameThinkPrompt, toolThinkPrompt, gameTools,
     lastToolResult,
     enterGame, exitGame, startPlaying, endPlaying, gameOverReport,
     checkState, fetchSettings, saveSettings,

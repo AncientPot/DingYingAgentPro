@@ -10,7 +10,6 @@ const interval = ref(game.autoInterval)
 const selectedTool = ref(game.activeGameTool)
 const thinkPrompt = ref(game.gameThinkPrompt)
 const toolThinkPrompt = ref(game.toolThinkPrompt)
-const obstacleCount = ref(game.toolObstacleCount)
 const gameToolList = ref([])
 const saving = ref(false)
 const saved = ref(false)
@@ -19,7 +18,6 @@ watch(() => game.autoInterval, v => { interval.value = v })
 watch(() => game.activeGameTool, v => { selectedTool.value = v })
 watch(() => game.gameThinkPrompt, v => { thinkPrompt.value = v })
 watch(() => game.toolThinkPrompt, v => { toolThinkPrompt.value = v })
-watch(() => game.toolObstacleCount, v => { obstacleCount.value = v })
 
 onMounted(async () => { try { gameToolList.value = (await api.gameGetTools()).tools || [] } catch (e) { /* */ } })
 
@@ -30,7 +28,6 @@ async function handleSave() {
       auto_reply_interval: Number(interval.value),
       game_think_prompt: thinkPrompt.value,
       tool_think_prompt: toolThinkPrompt.value,
-      tool_obstacle_count: Number(obstacleCount.value),
       active_game_tool: selectedTool.value,
     })
     saved.value = true
@@ -68,14 +65,7 @@ async function handleSave() {
       </div>
 
       <!-- 贪吃蛇专属设置 -->
-      <div v-if="selectedTool === 'snake_game'" class="space-y-4">
-        <div>
-          <label class="text-xs text-white/50 block mb-2">障碍物目标数量</label>
-          <div class="flex items-center gap-3">
-            <input v-model.number="obstacleCount" type="range" min="0" max="20" class="flex-1 accent-accent h-1 cursor-pointer" />
-            <span class="text-xs font-mono text-accent/70 w-6 text-right">{{ obstacleCount }}</span>
-          </div>
-        </div>
+      <div v-if="selectedTool === 'snake_game'">
         <div>
           <label class="text-xs text-white/50 block mb-2">贪吃蛇 AI 提示词</label>
           <textarea v-model="toolThinkPrompt" rows="3"

@@ -17,9 +17,11 @@ onMounted(async () => { await game.fetchSettings() })
 let ctxTimer = null
 watch(() => game.subMode, (mode) => {
   if (mode === 'playing' && game.activeGameTool === 'snake_game') {
-    ctxTimer = setInterval(() => {
+    const updateCtx = () => {
       if (snakeRef.value?.gameStateText) game.setGameContext(snakeRef.value.gameStateText())
-    }, 500)
+    }
+    updateCtx()  // 立即填充首次上下文，消除空档期
+    ctxTimer = setInterval(updateCtx, 500)
   } else {
     if (ctxTimer) { clearInterval(ctxTimer); ctxTimer = null }
   }

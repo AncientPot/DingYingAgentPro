@@ -1,10 +1,9 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useGameStore } from '../stores/game'
 
 const game = useGameStore()
 
-// 网格
 const GRID = 40
 const CELL = 14
 const canvasW = GRID * CELL
@@ -13,65 +12,85 @@ const canvasH = GRID * CELL
 const canvasRef = ref(null)
 let ctx = null
 let animId = null
+let gameOverTimeout = null
 
 // 游戏状态
-const snake = ref([{ x: 20, y: 20 }, { x: 19, y: 20 }, { x: 18, y: 20 }])
+const snake = ref([])
 const direction = ref({ x: 1, y: 0 })
 const nextDir = ref({ x: 1, y: 0 })
 const obstacles = ref([])
-const food = ref(null)
+const foods = ref([])
 const score = ref(0)
 const gameOver = ref(false)
 const gameOverReported = ref(false)
-const paused = ref(false)
 
-const speed = 150  // ms per tick
+const SPEED = 150
 let lastTick = 0
+
+const DIR_NAMES = { '1,0': '右', '-1,0': '左', '0,-1': '上', '0,1': '下' }
+
+function initState() {
+  snake.value = [{ x: 20, y: 20 }, { x: 19, y: 20 }, { x: 18, y: 20 }]
+  direction.value = { x: 1, y: 0 }
+  nextDir.value = { x: 1, y: 0 }
+  obstacles.value = []
+  foods.value = []
+  score.value = 0
+  gameOver.value = false
+  gameOverReported.value = false
+}
+
+function isOccupied(x, y) {
+  if (snake.value.some(s => s.x === x && s.y === y)) return true
+  if (obstacles.value.some(o => o.x === x && o.y === y)) return true
+  if (foods.value.some(f => f.x === x && f.y === y)) return true
+  return false
+}
 
 // 游戏状态文本（传给 AI）
 function gameStateText() {
   const body = snake.value.map(p => `(${p.x},${p.y})`).join(',')
   const obs = obstacles.value.map(p => `(${p.x},${p.y})`).join(',') || '无'
-  const fd = food.value ? `(${food.value.x},${food.value.y})` : '无'
-  const dirName = direction.value.x === 1 ? '右' : direction.value.x === -1 ? '左' : direction.value.y === -1 ? '上' : '下'
+  const fdList = foods.value.map(f => `(${f.x},${f.y})`).join(',') || '无'
+  const key = `${direction.value.x},${direction.value.y}`
+  const dirName = DIR_NAMES[key] || '右'
   const overText = gameOver.value ? '\n⚠️ 游戏已结束（蛇撞到了障碍物/墙壁/自身）。请对此做出回应。' : ''
-  const targetObs = game.toolObstacleCount || 3
-  return `蛇长:${snake.value.length} 方向:${dirName} 蛇身:[${body}] 障碍物:[${obs}](目标维持${targetObs}个) 食物:${fd} 网格:${GRID}x${GRID}${overText}`
+  return `蛇长:${snake.value.length} 方向:${dirName} 蛇身:[${body}] 障碍物:[${obs}] 食物:[${fdList}] 网格:${GRID}x${GRID}${overText}`
 }
 
-// 暴露给父组件
 defineExpose({ gameStateText })
 
-// 解析 AI 工具调用结果
+// 解析 AI 工具调用结果（支持批量：多行结果，每行一个放置项）
 function handleToolResult(toolName, content) {
-  if (toolName !== 'snake_game') return
-  if (!content) return
-  const parts = String(content).split(',')
-  if (parts.length < 2) return
-  const x = parseInt(parts[0].split(':').pop() || parts[0])
-  const y = parseInt(parts[1])
-  if (isNaN(x) || isNaN(y) || x < 0 || x >= GRID || y < 0 || y >= GRID) return
-  // 检查不与蛇身重叠
-  if (snake.value.some(s => s.x === x && s.y === y)) return
-  // 检查不与障碍物重叠
-  if (obstacles.value.some(o => o.x === x && o.y === y)) return
-  // 检查不与食物重叠
-  if (food.value && food.value.x === x && food.value.y === y) return
+  if (toolName !== 'snake_game' || !content) return
+  const lines = String(content).split('\n')
+  for (const line of lines) {
+    const match = line.trim().match(/^(FOOD|OBSTACLE):(\d+),(\d+)$/)
+    if (!match) continue
+    const x = parseInt(match[2]), y = parseInt(match[3])
+    if (x < 0 || x >= GRID || y < 0 || y >= GRID) continue
+    if (isOccupied(x, y)) continue
 
-  if (String(content).startsWith('FOOD:')) {
-    food.value = { x, y }
-  } else if (String(content).startsWith('OBSTACLE:')) {
-    obstacles.value.push({ x, y })
+    if (match[1] === 'FOOD') {
+      foods.value.push({ x, y })
+    } else {
+      obstacles.value.push({ x, y })
+    }
   }
+}
+
+function startLoop() {
+  lastTick = performance.now()
+  animId = requestAnimationFrame(gameLoop)
+}
+
+function stopLoop() {
+  if (animId) { cancelAnimationFrame(animId); animId = null }
 }
 
 // 游戏循环
 function gameLoop(ts) {
-  if (paused.value || gameOver.value) {
-    animId = requestAnimationFrame(gameLoop)
-    return
-  }
-  if (ts - lastTick < speed) {
+  if (ts - lastTick < SPEED) {
     animId = requestAnimationFrame(gameLoop)
     return
   }
@@ -86,28 +105,23 @@ function tick() {
   const head = snake.value[0]
   const newHead = { x: head.x + direction.value.x, y: head.y + direction.value.y }
 
-  // 撞墙
   if (newHead.x < 0 || newHead.x >= GRID || newHead.y < 0 || newHead.y >= GRID) {
-    triggerGameOver()
-    return
+    return triggerGameOver()
   }
-  // 撞自己
   if (snake.value.some(s => s.x === newHead.x && s.y === newHead.y)) {
-    triggerGameOver()
-    return
+    return triggerGameOver()
   }
-  // 撞障碍物
   if (obstacles.value.some(o => o.x === newHead.x && o.y === newHead.y)) {
-    triggerGameOver()
-    return
+    return triggerGameOver()
   }
 
   snake.value.unshift(newHead)
 
-  // 吃食物
-  if (food.value && food.value.x === newHead.x && food.value.y === newHead.y) {
+  // 吃食物：匹配数组中任意一个
+  const eatenIdx = foods.value.findIndex(f => f.x === newHead.x && f.y === newHead.y)
+  if (eatenIdx !== -1) {
     score.value++
-    food.value = null
+    foods.value.splice(eatenIdx, 1)
   } else {
     snake.value.pop()
   }
@@ -116,14 +130,20 @@ function tick() {
 function triggerGameOver() {
   gameOver.value = true
   game.stopAutoReply()
-  // 延迟发送总结
-  setTimeout(() => {
+  stopLoop()
+  gameOverTimeout = setTimeout(() => {
     if (!gameOverReported.value) {
       gameOverReported.value = true
-      const summary = `贪吃蛇游戏结束。得分:${score.value} 长度:${snake.value.length} 障碍物:${obstacles.value.length}个。`
-      game.gameOverReport(summary)
+      game.gameOverReport(`贪吃蛇游戏结束。得分:${score.value} 长度:${snake.value.length} 障碍物:${obstacles.value.length}个。`)
     }
   }, 3000)
+}
+
+function restart() {
+  if (gameOverTimeout) { clearTimeout(gameOverTimeout); gameOverTimeout = null }
+  initState()
+  startLoop()
+  game.startAutoReply()
 }
 
 function draw() {
@@ -147,13 +167,13 @@ function draw() {
     ctx.fillRect(o.x * CELL + 2, o.y * CELL + 2, CELL - 4, CELL - 4)
   }
 
-  // 食物
-  if (food.value) {
+  // 食物（多个）
+  for (const f of foods.value) {
     ctx.fillStyle = '#ffb74d'
     ctx.shadowColor = '#ffb74d'
     ctx.shadowBlur = 6
     ctx.beginPath()
-    ctx.arc(food.value.x * CELL + CELL / 2, food.value.y * CELL + CELL / 2, CELL / 2 - 3, 0, Math.PI * 2)
+    ctx.arc(f.x * CELL + CELL / 2, f.y * CELL + CELL / 2, CELL / 2 - 3, 0, Math.PI * 2)
     ctx.fill()
     ctx.shadowBlur = 0
   }
@@ -185,8 +205,8 @@ function draw() {
 
 // 键盘控制
 function onKey(e) {
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
-    e.preventDefault()  // 阻止方向键触发页面滚动/UI按钮聚焦
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    e.preventDefault()
   }
   if (gameOver.value) return
   const k = e.key.toLowerCase()
@@ -207,19 +227,17 @@ watch(() => game.lastToolResult, (result) => {
 })
 
 onMounted(() => {
+  initState()
   ctx = canvasRef.value?.getContext('2d')
-  lastTick = performance.now()
-  animId = requestAnimationFrame(gameLoop)
+  startLoop()
   window.addEventListener('keydown', onKey)
 })
 
 onUnmounted(() => {
-  cancelAnimationFrame(animId)
+  stopLoop()
+  if (gameOverTimeout) clearTimeout(gameOverTimeout)
   window.removeEventListener('keydown', onKey)
 })
-
-// 暴露给父组件
-const snakeStateText = computed(() => gameStateText())
 </script>
 
 <template>
@@ -239,7 +257,10 @@ const snakeStateText = computed(() => gameStateText())
       class="rounded-xl border border-white/[0.06] bg-base-900/80 cursor-crosshair"
     ></canvas>
 
-    <!-- 提示 -->
-    <p class="text-[10px] text-white/15">方向键 / WASD 控制蛇的移动</p>
+    <!-- 操作按钮 -->
+    <button v-if="gameOver"
+      class="px-4 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 bg-accent/10 text-accent border-accent/20 hover:bg-accent/20 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)] active:scale-[0.98]"
+      @click="restart">重新开始</button>
+    <p v-else class="text-[10px] text-white/15">方向键 / WASD 控制蛇的移动</p>
   </div>
 </template>

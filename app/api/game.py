@@ -38,7 +38,6 @@ def game_settings():
         "game_think_prompt": config.get("game_think_prompt", ""),
         # 当前工具的专属设置
         "tool_think_prompt": tool_cfg.get("think_prompt", ""),
-        "tool_obstacle_count": tool_cfg.get("obstacle_count", 3),
     }
 
 
@@ -57,13 +56,11 @@ def update_game_settings(payload: dict):
         partial["game_think_prompt"] = payload["game_think_prompt"].strip()
     # 工具专属设置保存到 game_tool_settings
     tool_name = payload.get("active_game_tool") or get_config().get("game_active_tool")
-    if tool_name and ("tool_think_prompt" in payload or "tool_obstacle_count" in payload):
+    if tool_name and "tool_think_prompt" in payload:
         all_tool_cfg = dict(get_config().get("game_tool_settings", {}))
         cur = dict(all_tool_cfg.get(tool_name, {}))
         if "tool_think_prompt" in payload:
             cur["think_prompt"] = str(payload["tool_think_prompt"]).strip()
-        if "tool_obstacle_count" in payload:
-            cur["obstacle_count"] = max(0, min(20, int(payload["tool_obstacle_count"])))
         all_tool_cfg[tool_name] = cur
         partial["game_tool_settings"] = all_tool_cfg
     if partial: update_config(partial)
@@ -75,7 +72,6 @@ def update_game_settings(payload: dict):
         "active_game_tool": active,
         "game_think_prompt": config.get("game_think_prompt", ""),
         "tool_think_prompt": tool_cfg.get("think_prompt", ""),
-        "tool_obstacle_count": tool_cfg.get("obstacle_count", 3),
     }
 
 
@@ -203,7 +199,6 @@ def game_think(request: dict):
                     memory = get_checkpointer()
                     tup = memory.get_tuple(config)
                     history = list(tup.checkpoint["channel_values"]["messages"]) if tup else []
-                    gcfg = get_config()
                     # 优先用工具专属提示词，否则用全局游戏提示词
                     active_tool_now = gcfg.get("game_active_tool")
                     tool_cfg = gcfg.get("game_tool_settings", {}).get(active_tool_now, {}) if active_tool_now else {}
