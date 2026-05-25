@@ -242,6 +242,19 @@ onUnmounted(() => {
 
 <template>
   <div class="flex flex-col items-center gap-3 select-none">
+    <!-- AI 面板 -->
+    <transition name="ai-fade">
+      <div v-if="game.showAiPanel && (game.aiMessage || game.aiThinking)"
+        class="ai-panel w-[85%] max-w-lg max-h-20 overflow-y-auto px-4 py-2 text-center">
+        <p v-if="game.aiMessage" class="text-white/55 text-xs leading-relaxed whitespace-pre-wrap">{{ game.aiMessage }}</p>
+        <div v-else class="flex items-center justify-center gap-1.5 py-1">
+          <span class="loading-dot w-1.5 h-1.5 rounded-full bg-accent/50"></span>
+          <span class="loading-dot w-1.5 h-1.5 rounded-full bg-accent/50"></span>
+          <span class="loading-dot w-1.5 h-1.5 rounded-full bg-accent/50"></span>
+        </div>
+      </div>
+    </transition>
+
     <!-- 状态栏 -->
     <div class="flex items-center gap-4 text-[11px] font-mono">
       <span class="text-white/40">长度 <span class="text-accent/70">{{ snake.length }}</span></span>
@@ -264,3 +277,11 @@ onUnmounted(() => {
     <p v-else class="text-[10px] text-white/15">方向键 / WASD 控制蛇的移动</p>
   </div>
 </template>
+
+<style scoped>
+.ai-panel { text-shadow: 0 0 20px rgba(0,0,0,0.5); }
+.ai-fade-enter-active { animation: ai-in 0.5s ease-out; }
+.ai-fade-leave-active { animation: ai-out 1.5s ease-in; }
+@keyframes ai-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ai-out { from { opacity: 1; } to { opacity: 0; } }
+</style>

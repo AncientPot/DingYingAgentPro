@@ -33,7 +33,7 @@ def game_settings():
     active = config.get("game_active_tool")
     tool_cfg = config.get("game_tool_settings", {}).get(active, {}) if active else {}
     return {
-        "auto_reply_interval": config.get("game_auto_reply_interval", 0),
+        "auto_reply_interval": tool_cfg.get("auto_reply_interval", 10),
         "active_game_tool": active,
         "game_think_prompt": config.get("game_think_prompt", ""),
         # 当前工具的专属设置
@@ -45,7 +45,13 @@ def game_settings():
 def update_game_settings(payload: dict):
     partial = {}
     if "auto_reply_interval" in payload:
-        partial["game_auto_reply_interval"] = max(0, min(300, int(payload["auto_reply_interval"])))
+        tool_name = payload.get("active_game_tool") or get_config().get("game_active_tool")
+        if tool_name:
+            all_tool_cfg = dict(get_config().get("game_tool_settings", {}))
+            cur = dict(all_tool_cfg.get(tool_name, {}))
+            cur["auto_reply_interval"] = max(0, min(300, int(payload["auto_reply_interval"])))
+            all_tool_cfg[tool_name] = cur
+            partial["game_tool_settings"] = all_tool_cfg
     if "active_game_tool" in payload:
         val = payload["active_game_tool"]
         if val is None: partial["game_active_tool"] = None
@@ -68,7 +74,7 @@ def update_game_settings(payload: dict):
     active = config.get("game_active_tool")
     tool_cfg = config.get("game_tool_settings", {}).get(active, {}) if active else {}
     return {
-        "auto_reply_interval": config.get("game_auto_reply_interval", 0),
+        "auto_reply_interval": tool_cfg.get("auto_reply_interval", 10),
         "active_game_tool": active,
         "game_think_prompt": config.get("game_think_prompt", ""),
         "tool_think_prompt": tool_cfg.get("think_prompt", ""),
@@ -238,6 +244,9 @@ def game_think(request: dict):
                         final = llm.invoke(msgs)
                         if final.content:
                             sync_queue.put(("chunk", final.content))
+                    elif response.content:
+                        # LLM 未调用工具，直接发送其文本回复
+                        sync_queue.put(("chunk", response.content))
                 else:
                     for event in graph.stream(input_state, stream_mode="messages", config=config):
                         message = event[0]

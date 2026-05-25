@@ -25,14 +25,14 @@ _DEFAULT_CONFIG = {
     "max_search_results": 2,
     "enabled_tools": ["calculator", "netease_cloud_music", "tavily_search", "md_file_manager", "game"],
     # 游戏模式设置
-    "game_auto_reply_interval": 0,   # 默认关闭自主回复，0=关闭
     "game_enabled_tools": ["calculator"],
     "game_active_tool": None,
     "game_think_prompt": "你是游戏助手。根据游戏状态自主决策，使用游戏工具操作。回复必须精简（≤15字），直接行动。",
-    # 各游戏工具的专属设置
+    # 各游戏工具的专属设置（含自主回复间隔、提示词等）
     "game_tool_settings": {
         "snake_game": {
             "think_prompt": "你是贪吃蛇游戏助手。根据蛇的位置和状态决定生成食物或障碍物。食物放在蛇前方3-5格，可同时放多个食物分布在网格各处。障碍物散布在蛇前进路径周围。一次可放置多个物品，将需要的类型和坐标都列在 items 中。回复≤10字。",
+            "auto_reply_interval": 10,
         }
     },
 }

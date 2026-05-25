@@ -65,19 +65,20 @@ Vite 将 `/api/*` 代理到后端 `localhost:8000`（`vite.config.js`）。
 | ChatMessage | 消息气泡，渲染 `**粗体**`，流式时显示光标 |
 | ChatInput | 自动伸缩 textarea + 发光发送按钮 |
 | ToolCallCard | 琥珀色边框，默认折叠，点击展开 |
-| GameCanvas | 游戏视图：准备中(设置面板)+游戏中(游戏画面) |
-| GameSettings | 游戏设置：间隔滑块、游戏工具单选、每工具专属设置 |
-| SnakeGame | Canvas 贪吃蛇：40x40网格，键盘操控，AI放置食物/障碍物 |
+| GameCanvas | 游戏路由器：准备中(设置面板)+游戏中(工具组件) |
+| GameSettings | 游戏设置：工具单选 + 当前工具专属设置(间隔+提示词) |
+| SnakeGame | Canvas 贪吃蛇：40x40网格，键盘操控，AI放置食物/障碍物，内聚 AI 回复面板 |
 
 ### 游戏模式 (stores/game.js)
 
 - `gameMode` / `subMode` (`preparing`|`playing`) 双状态
 - **准备中**: 设置面板为主体，底部"开始游戏"+"退出游戏模式"
-- **游戏中**: 输入框禁用，AI 自主回复，设置不可调
+- **游戏中**: 输入框禁用，AI 自主回复，设置不可调，AI 面板内聚在游戏组件中
 - 进入游戏时侧边栏自动折叠
 - `checkState()` 刷新后恢复游戏状态
 - 三层提示词：全局 system_prompt → game_think_prompt → 工具 docstring
 - 三线程隔离：`{base_tid}` / `{base_tid}/prep` / `{base_tid}/play`
+- 每个游戏工具自包含 UI（画布 + AI 面板 + 控制），GameCanvas 为纯路由器
 
 ## 样式 (style.css)
 

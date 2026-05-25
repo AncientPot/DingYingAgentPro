@@ -225,7 +225,7 @@ while (true) {
 | `POST` | `/api/game/gameover` | 游戏结束总结 → 准备中 |
 | `POST` | `/api/game/exit` | 退出游戏模式 |
 
-游戏设置包含全局字段（`auto_reply_interval`、`active_game_tool`）和每工具专属字段（`tool_think_prompt`），后者存储在 `game_tool_settings.{tool_name}` 中。
+游戏设置均为当前选中工具的专属设置（`auto_reply_interval`、`tool_think_prompt`），存储在 `game_tool_settings.{tool_name}` 中。
 
 ---
 

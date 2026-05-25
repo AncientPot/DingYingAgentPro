@@ -78,30 +78,10 @@ watch(() => game.subMode, (mode) => {
           @click="game.endPlaying()">结束游戏</button>
       </div>
     </div>
-
-    <!-- AI 面板 + 加载指示器 -->
-    <transition name="ai-fade">
-      <div v-if="game.showAiPanel && game.subMode === 'playing' && (game.aiMessage || game.aiThinking)"
-        class="ai-panel absolute top-3 left-1/2 -translate-x-1/2 w-[85%] max-w-lg max-h-32 overflow-y-auto z-20 px-5 py-2.5 text-center">
-        <p v-if="game.aiMessage" class="text-white/55 text-xs leading-relaxed whitespace-pre-wrap">{{ game.aiMessage }}</p>
-        <div v-else class="flex items-center justify-center gap-1.5 py-1">
-          <span class="loading-dot w-1.5 h-1.5 rounded-full bg-accent/50"></span>
-          <span class="loading-dot w-1.5 h-1.5 rounded-full bg-accent/50"></span>
-          <span class="loading-dot w-1.5 h-1.5 rounded-full bg-accent/50"></span>
-        </div>
-      </div>
-    </transition>
   </div>
 </template>
 
 <style scoped>
 .game-canvas { animation: game-enter 0.5s ease-out both; }
 @keyframes game-enter { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
-.ai-panel { text-shadow: 0 0 20px rgba(0,0,0,0.5); }
-.ai-fade-enter-active { animation: ai-in 0.5s ease-out; }
-.ai-fade-leave-active { animation: ai-out 1.5s ease-in; }
-@keyframes ai-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
-@keyframes ai-out { from { opacity: 1; } to { opacity: 0; } }
-.settings-fade-enter-active, .settings-fade-leave-active { transition: opacity 0.2s ease; }
-.settings-fade-enter-from, .settings-fade-leave-to { opacity: 0; }
 </style>

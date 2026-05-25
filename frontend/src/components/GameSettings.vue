@@ -64,8 +64,16 @@ async function handleSave() {
         </div>
       </div>
 
-      <!-- 贪吃蛇专属设置 -->
-      <div v-if="selectedTool === 'snake_game'">
+      <!-- 选中工具的专属设置 -->
+      <div v-if="selectedTool === 'snake_game'" class="space-y-4">
+        <div>
+          <label class="text-xs text-white/50 block mb-2">AI 自主回复间隔</label>
+          <div class="flex items-center justify-between mb-1">
+            <input v-model.number="interval" type="range" min="0" max="120" step="5" class="flex-1 accent-accent h-1 cursor-pointer" />
+            <span class="text-xs font-mono ml-3 w-12 text-right" :class="interval == 0 ? 'text-white/25' : 'text-accent/70'">{{ interval == 0 ? '关闭' : interval + ' 秒' }}</span>
+          </div>
+          <div class="flex justify-between text-[10px] text-white/15"><span>关闭</span><span>30s</span><span>60s</span><span>120s</span></div>
+        </div>
         <div>
           <label class="text-xs text-white/50 block mb-2">贪吃蛇 AI 提示词</label>
           <textarea v-model="toolThinkPrompt" rows="3"
@@ -74,14 +82,9 @@ async function handleSave() {
         </div>
       </div>
 
-      <!-- 自主回复间隔 -->
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <label class="text-xs text-white/50">AI 自主回复间隔</label>
-          <span class="text-xs font-mono" :class="interval == 0 ? 'text-white/25' : 'text-accent/70'">{{ interval == 0 ? '关闭' : interval + ' 秒' }}</span>
-        </div>
-        <input v-model.number="interval" type="range" min="0" max="120" step="5" class="w-full accent-accent h-1 cursor-pointer" />
-        <div class="flex justify-between text-[10px] text-white/15 mt-1"><span>关闭</span><span>30s</span><span>60s</span><span>120s</span></div>
+      <!-- 未选工具提示 -->
+      <div v-if="!selectedTool" class="text-center py-4">
+        <p class="text-xs text-white/15">请先选择游戏工具</p>
       </div>
 
     </div>
