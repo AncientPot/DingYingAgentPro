@@ -65,6 +65,17 @@ Vite 将 `/api/*` 代理到后端 `localhost:8000`（`vite.config.js`）。
 | ChatMessage | 消息气泡，渲染 `**粗体**`，流式时显示光标 |
 | ChatInput | 自动伸缩 textarea + 发光发送按钮 |
 | ToolCallCard | 琥珀色边框，默认折叠，点击展开 |
+| GameCanvas | 游戏视图：准备中/游戏中双模式，AI 面板右上角浮动 |
+| GameSettings | 游戏设置浮层：间隔滑块、提示词编辑、游戏工具单选 |
+
+### 游戏模式 (stores/game.js)
+
+- `gameMode` / `subMode` (`preparing`|`playing`) 双状态
+- **准备中**: AI 不自主回复，显示"开始游戏"按钮，可调设置
+- **游戏中**: AI 自主回复定时器生效，显示"结束游戏"按钮
+- 进入游戏时侧边栏自动折叠，退出后需手动展开
+- `checkState()` 刷新后从后端恢复游戏状态
+- 游戏工具单选（`activeGameTool`），通过 GameSettings 管理
 
 ## 样式 (style.css)
 

@@ -1,13 +1,16 @@
 <script setup>
 import { ref, nextTick, onMounted, watch } from 'vue'
 import { useSessionStore } from '../stores/session'
+import { useGameStore } from '../stores/game'
 import { streamMessage, getSessionMessages } from '../api'
 import SessionSidebar from '../components/SessionSidebar.vue'
 import ChatMessage from '../components/ChatMessage.vue'
 import ToolCallCard from '../components/ToolCallCard.vue'
 import ChatInput from '../components/ChatInput.vue'
+import GameCanvas from '../components/GameCanvas.vue'
 
 const store = useSessionStore()
+const game = useGameStore()
 const messages = ref([])
 const isStreaming = ref(false)
 const abortController = ref(null)
@@ -64,6 +67,11 @@ onMounted(async () => {
   } else {
     await store.selectOrCreate('默认')
   }
+  // 刷新后检查游戏状态（恢复子模式 + 设置 + 定时器）
+  await game.checkState()
+  if (game.gameMode && game.subMode === 'playing') {
+    game.startAutoReply()
+  }
 })
 
 function scrollToBottom() {
@@ -92,8 +100,13 @@ function finishAiSegment() {
 async function handleSend(text) {
   if (!store.activeName || isStreaming.value) return
 
-  // 用户消息
-  messages.value.push({ type: 'user', content: text })
+  // 游戏模式下：清空 AI 面板，不添加用户消息到聊天历史
+  if (game.gameMode) {
+    game.onUserMessage(text)
+    messages.value.push({ type: 'user', content: text })
+  } else {
+    messages.value.push({ type: 'user', content: text })
+  }
 
   // 第一个 AI 文本段
   const seg = startAiSegment()
@@ -107,21 +120,22 @@ async function handleSend(text) {
     for await (const evt of streamMessage(store.activeName, text, controller.signal)) {
       switch (evt.type) {
         case 'chunk': {
-          // 追加到当前 AI 文本段
+          // 游戏模式：追加到游戏 AI 面板
+          if (game.gameMode) {
+            game.appendAiChunk(evt.content || '')
+          }
+          // 正常模式：追加到聊天 AI 段
           if (activeAiIdx >= 0 && activeAiIdx < messages.value.length) {
             messages.value[activeAiIdx].content += evt.content || ''
           }
 
-          // 发现新的工具调用 — 结束当前 AI 段，插入 tool 卡片，再开新 AI 段
+          // 发现新的工具调用
           if (evt.tool_calls) {
             for (const tc of evt.tool_calls) {
               if (!tc.name) continue
-              // 检查 tool 卡片是否已存在（按 ID 去重）
               const exists = messages.value.find(m => m.type === 'tool' && m.id === tc.id)
               if (exists) continue
-              // 结束当前流式 AI 段
               finishAiSegment()
-              // 插入 tool 卡片
               messages.value.push({
                 type: 'tool',
                 name: tc.name,
@@ -129,7 +143,6 @@ async function handleSend(text) {
                 args: tc.args || {},
                 result: null,
               })
-              // 开启新的 AI 文本段（等待后续 chunk 或 tool 结果）
               startAiSegment()
             }
           }
@@ -137,7 +150,6 @@ async function handleSend(text) {
           break
         }
         case 'tool': {
-          // 工具返回结果 — 按 tool_call_id 匹配 tool 卡片
           const targetId = evt.tool_call_id
           let card = null
           if (targetId) {
@@ -149,7 +161,6 @@ async function handleSend(text) {
           if (card) {
             card.result = evt.content
           } else if (evt.tool_name) {
-            // 后端产生的 tool 事件但前端还没收到对应的 tool_call chunk
             messages.value.push({
               type: 'tool',
               name: evt.tool_name,
@@ -170,6 +181,13 @@ async function handleSend(text) {
         }
         case 'done': {
           finishAiSegment()
+          // 检测游戏模式状态变更（进入准备中，不启动自主回复）
+          if (evt.game_mode && !game.gameMode) {
+            const tid = store.activeSession?.thread_id || ''
+            game.enterGame(evt.game_type || 'default', tid)
+          } else if (!evt.game_mode && game.gameMode) {
+            game.exitGame()
+          }
           break
         }
       }
@@ -203,8 +221,11 @@ function handleStop() {
     <SessionSidebar />
 
     <div class="flex-1 flex flex-col min-w-0">
-      <div ref="chatContainer" class="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-        <!-- 空状态 -->
+      <!-- 游戏模式 -->
+      <GameCanvas v-if="game.gameMode" />
+
+      <!-- 正常聊天模式 -->
+      <div v-else ref="chatContainer" class="flex-1 overflow-y-auto px-6 py-4 space-y-3 chat-area">
         <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-white/25 select-none">
           <div class="w-16 h-16 rounded-2xl glass flex items-center justify-center mb-4">
             <span class="text-2xl font-mono text-accent/50">◇</span>
@@ -213,7 +234,6 @@ function handleStop() {
           <p class="text-xs mt-1 text-white/15">输入消息，AI 将调用工具来回应你</p>
         </div>
 
-        <!-- 交织渲染：用户消息 / AI 文本段 / 工具调用卡片 -->
         <template v-for="(msg, i) in messages" :key="i">
           <ChatMessage
             v-if="msg.type === 'user'"
@@ -234,10 +254,10 @@ function handleStop() {
         </template>
       </div>
 
-      <div class="px-5 py-3 border-t border-white/[0.03] bg-base-900/50">
+      <div class="px-5 py-3 border-t border-white/[0.03] bg-base-900/50" :class="{ 'border-accent/10': game.gameMode }">
         <div class="max-w-3xl mx-auto flex items-end gap-3">
           <div class="flex-1">
-            <ChatInput :disabled="!store.activeName" @send="handleSend" />
+            <ChatInput :disabled="!store.activeName" :placeholder="game.gameMode ? '在游戏中与 AI 对话...' : '输入消息，Enter 发送，Shift+Enter 换行...'" @send="handleSend" />
           </div>
           <button
             v-if="isStreaming"

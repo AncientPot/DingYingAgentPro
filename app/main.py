@@ -50,6 +50,11 @@ def on_startup():
     """应用启动时初始化 SessionService 并预热 Agent 图。"""
     logger.info("正在初始化服务...")
 
+    # 重置游戏状态（防止上次运行残留）
+    from app.services.game_service import set_game_mode
+    set_game_mode(False)
+    logger.info("游戏状态已重置")
+
     # 初始化会话服务（复用 Agent 的 SQLite 检查点）
     checkpointer = get_checkpointer()
     app.state.session_service = SessionService(checkpointer)
@@ -69,11 +74,13 @@ from app.api.chat import router as chat_router
 from app.api.sessions import router as sessions_router
 from app.api.config import router as config_router
 from app.api.tools import router as tools_router
+from app.api.game import router as game_router
 
 app.include_router(chat_router)
 app.include_router(sessions_router)
 app.include_router(config_router)
 app.include_router(tools_router)
+app.include_router(game_router)
 
 
 # ── 健康检查 ──

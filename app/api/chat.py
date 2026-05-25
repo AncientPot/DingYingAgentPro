@@ -12,6 +12,7 @@ from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, Too
 
 from app.agent.graph import get_graph
 from app.models.schemas import ChatRequest, ChatResponse
+from app.services.game_service import get_game_state
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +115,8 @@ async def chat_stream(req: ChatRequest, request: Request):
             msg_type, msg_data = await loop.run_in_executor(None, sync_queue.get)
 
             if msg_type == "done":
-                yield f"data: {json.dumps({'type': 'done', 'tokens': total_tokens})}\n\n"
+                gs = get_game_state()
+                yield f"data: {json.dumps({'type': 'done', 'tokens': total_tokens, 'game_mode': gs['game_mode'], 'game_type': gs.get('game_type', 'default')})}\n\n"
                 break
             elif msg_type == "error":
                 yield f"data: {json.dumps({'type': 'error', 'content': msg_data})}\n\n"

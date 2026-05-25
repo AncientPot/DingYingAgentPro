@@ -22,10 +22,12 @@ _package_dir = os.path.dirname(__file__)
 
 
 def _discover_modules():
-    """发现 tools/ 目录下所有可导入的工具模块名。"""
+    """发现 tools/ 目录下所有标准工具模块名（排除 game_tools 子包）。"""
     modules = []
     for module_info in pkgutil.iter_modules([_package_dir]):
         if module_info.name.startswith("_"):
+            continue
+        if module_info.name == "game_tools":  # 游戏工具独立管理
             continue
         modules.append(module_info.name)
     return sorted(modules)

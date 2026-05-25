@@ -43,6 +43,15 @@
 | `tavily_search.py` | tavily_search | 联网搜索（需 TAVILY_API_KEY） |
 | `netease_cloud_music.py` | control_netease_cloud_music | 网易云音乐桌面控制（仅 Windows） |
 | `md_file_manager.py` | file_manager | 创建文件夹/创建读写备份恢复 .md 文件 |
+| `game.py` | game_center | 进入/退出游戏模式 |
+
+### 游戏工具（game_tools/ 子目录）
+
+独立于标准工具，仅在游戏模式设置中可见，单选启用。
+
+- `list_game_tools()` — 发现 game_tools/ 下所有非 `_` 前缀模块
+- `load_game_tool(name)` — 加载指定游戏工具
+- 每个游戏工具需 `get_meta()`（元信息）+ `get_tool()`（工具实例）
 
 ## 添加新工具
 

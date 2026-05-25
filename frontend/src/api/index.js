@@ -30,6 +30,42 @@ export const getTools = () => request('GET', '/tools')
 export const toggleTool = (name, enabled) => request('PUT', `/tools/${encodeURIComponent(name)}`, { enabled })
 export const testTool = (name) => request('POST', `/tools/${encodeURIComponent(name)}/test`)
 
+// Game
+export const getGameState = () => request('GET', '/game/state')
+export const exitGame = () => request('POST', '/game/exit')
+export const gameStart = () => request('POST', '/game/start')
+export const gameStop = () => request('POST', '/game/stop')
+export const gameGetSettings = () => request('GET', '/game/settings')
+export const gameUpdateSettings = (data) => request('PUT', '/game/settings', data)
+export const gameGetTools = () => request('GET', '/game/tools')
+
+// Game think (SSE) — returns async generator
+export async function* gameThink(threadId, signal) {
+  const r = await fetch('/api/game/think', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ thread_id: threadId }),
+    signal,
+  })
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
+  const reader = r.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try { yield JSON.parse(line.slice(6)) }
+        catch (e) { console.warn('Game SSE parse:', e) }
+      }
+    }
+  }
+}
+
 // Chat (non-streaming)
 export const sendMessage = (sessionName, message) =>
   request('POST', '/chat', { session_name: sessionName, message })

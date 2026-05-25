@@ -7,6 +7,7 @@ const textarea = ref(null)
 
 const props = defineProps({
   disabled: { type: Boolean, default: false },
+  placeholder: { type: String, default: '输入消息，Enter 发送，Shift+Enter 换行...' },
 })
 
 function handleSend() {
@@ -42,7 +43,7 @@ function autoResize() {
       :disabled="disabled"
       class="flex-1 bg-transparent text-sm text-white/85 placeholder-white/20 resize-none max-h-40 font-mono leading-relaxed glass-input"
       :class="disabled ? 'opacity-40 cursor-not-allowed' : ''"
-      placeholder="输入消息，Enter 发送，Shift+Enter 换行..."
+      :placeholder="placeholder"
       @keydown="handleKeydown"
       @input="autoResize"
     ></textarea>

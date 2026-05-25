@@ -47,3 +47,14 @@
 - `GET /tools` — 调用 `get_tools_status()` 返回工具列表
 - `PUT /tools/{name}` — 接收 `ToolToggleRequest`，调用 `set_tool_enabled()` 切换启用状态
 - `POST /tools/{name}/test` — 调用 `test_tool()` 执行连通性检测
+
+## game.py — 游戏模式
+
+- `GET /game/state` — 游戏状态（game_mode, sub_mode）
+- `GET /game/settings` — 游戏设置（间隔、提示词、当前游戏工具）
+- `PUT /game/settings` — 更新游戏设置
+- `GET /game/tools` — 列出可用游戏工具（game_tools/ 目录）
+- `POST /game/start` — 准备中→游戏中
+- `POST /game/stop` — 游戏中→准备中
+- `POST /game/think` — AI 自主思考 SSE（仅 playing 子模式）
+- `POST /game/exit` — 退出游戏模式

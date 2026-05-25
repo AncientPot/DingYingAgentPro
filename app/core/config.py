@@ -23,7 +23,12 @@ _DEFAULT_CONFIG = {
     "base_url": os.getenv("DEEPSEEK_BASE_URL", ""),
     "system_prompt": "你是一个AI助手，请尽你所能回答我的问题。",
     "max_search_results": 2,
-    "enabled_tools": ["calculator", "netease_cloud_music", "tavily_search", "md_file_manager"],
+    "enabled_tools": ["calculator", "netease_cloud_music", "tavily_search", "md_file_manager", "game"],
+    # 游戏模式设置
+    "game_auto_reply_interval": 0,   # 默认关闭自主回复，0=关闭
+    "game_enabled_tools": ["calculator"],
+    "game_active_tool": None,  # 当前选中的游戏工具名，None 表示未选择
+    "game_think_prompt": "你正处于游戏模式中，正在与用户一起进行互动游戏。请根据当前游戏状态自主推进游戏进程，主动描述场景、提出问题或给出反馈。保持回复简洁有趣。",
 }
 
 _lock = threading.Lock()
