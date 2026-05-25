@@ -1,7 +1,7 @@
 <script setup>
 import { ref, nextTick, onMounted, watch } from 'vue'
 import { useSessionStore } from '../stores/session'
-import { streamMessage } from '../api'
+import { streamMessage, getSessionMessages } from '../api'
 import SessionSidebar from '../components/SessionSidebar.vue'
 import ChatMessage from '../components/ChatMessage.vue'
 import ToolCallCard from '../components/ToolCallCard.vue'
@@ -13,8 +13,48 @@ const isStreaming = ref(false)
 const abortController = ref(null)
 const chatContainer = ref(null)
 
-watch(() => store.activeName, (name, oldName) => {
-  if (name !== oldName) messages.value = []
+// 从后端加载会话历史，转换为前端交织格式
+async function loadHistory(name) {
+  messages.value = []
+  if (!name) return
+  try {
+    const data = await getSessionMessages(name)
+    const raw = data.messages || []
+    for (const m of raw) {
+      if (m.role === 'user') {
+        messages.value.push({ type: 'user', content: m.content })
+      } else if (m.role === 'assistant') {
+        // AI 文本段（先放文本，工具调用在下面单独插入）
+        messages.value.push({ type: 'ai', content: m.content || '', streaming: false })
+        // 工具调用 → 插入 tool 卡片（历史中无 result）
+        const tcs = m.tool_calls || []
+        for (const tc of tcs) {
+          messages.value.push({
+            type: 'tool',
+            name: tc.name || '',
+            id: tc.id || '',
+            args: tc.args || {},
+            result: null,
+          })
+        }
+      } else if (m.role === 'tool') {
+        // 工具结果 → 匹配已有 tool 卡片填入 result
+        const card = messages.value.find(
+          t => t.type === 'tool' && t.id === m.tool_call_id && !t.result
+        )
+        if (card) {
+          card.result = m.content
+        }
+      }
+    }
+    scrollToBottom()
+  } catch (e) {
+    console.error('Failed to load history:', e)
+  }
+}
+
+watch(() => store.activeName, (name) => {
+  loadHistory(name)
 })
 
 onMounted(async () => {

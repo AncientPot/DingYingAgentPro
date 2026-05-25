@@ -1,6 +1,17 @@
-# CLAUDE.md
+# CLAUDE.md — DingYingAgentPro
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+> 各子包有独立的 `CLAUDE.md`，从根向叶子逐级深入：
+> - [app/CLAUDE.md](app/CLAUDE.md) — 应用入口与生命周期
+> - [app/core/CLAUDE.md](app/core/CLAUDE.md) — 配置系统
+> - [app/agent/CLAUDE.md](app/agent/CLAUDE.md) — Agent 图引擎
+> - [app/tools/CLAUDE.md](app/tools/CLAUDE.md) — 插件式工具系统
+> - [app/models/CLAUDE.md](app/models/CLAUDE.md) — 请求/响应模型
+> - [app/services/CLAUDE.md](app/services/CLAUDE.md) — 业务逻辑层
+> - [app/api/CLAUDE.md](app/api/CLAUDE.md) — HTTP API 路由
+> - [frontend/CLAUDE.md](frontend/CLAUDE.md) — Vue3 前端
+> - [README_API.md](README_API.md) — 面向使用者的 API 接口文档
 
 ## 常用命令
 

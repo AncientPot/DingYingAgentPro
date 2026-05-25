@@ -19,6 +19,7 @@ export const healthCheck = () => request('GET', '/health')
 export const getSessions = () => request('GET', '/sessions')
 export const createSession = (name) => request('POST', '/sessions', { name })
 export const deleteSession = (name) => request('DELETE', `/sessions/${encodeURIComponent(name)}`)
+export const getSessionMessages = (name) => request('GET', `/sessions/${encodeURIComponent(name)}/messages`)
 
 // Config
 export const getConfig = () => request('GET', '/config')

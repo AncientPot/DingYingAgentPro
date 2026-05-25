@@ -126,6 +126,7 @@ while (true) {
 | `GET` | `/api/sessions` | 列出所有会话 |
 | `POST` | `/api/sessions` | 创建/复用会话 |
 | `DELETE` | `/api/sessions/{name}` | 删除会话 |
+| `GET` | `/api/sessions/{name}/messages` | 获取会话历史消息 |
 
 ```json
 // POST /api/sessions
@@ -134,6 +135,19 @@ while (true) {
 // 响应
 { "name": "新会话", "thread_id": "uuid..." }
 ```
+
+**历史消息响应：**
+```json
+{
+  "messages": [
+    {"role": "user", "content": "你好"},
+    {"role": "assistant", "content": "你好！有什么可以帮助你的？"},
+    {"role": "assistant", "content": "15 × 8 = 120", "tool_calls": [{"name": "calculator", "args": {...}, "id": "..."}]},
+    {"role": "tool", "name": "calculator", "tool_call_id": "...", "content": "120"}
+  ]
+}
+```
+前端刷新页面后调用此接口恢复对话历史。
 
 ### 3. 设置
 
