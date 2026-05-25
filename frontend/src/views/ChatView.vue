@@ -100,7 +100,18 @@ function finishAiSegment() {
 async function handleSend(text) {
   if (!store.activeName || isStreaming.value) return
 
-  // 游戏模式下：清空 AI 面板，不添加用户消息到聊天历史
+  // 准备中子模式：路由到游戏对话（与正常对话隔离）
+  if (game.gameMode && game.subMode === 'preparing') {
+    messages.value.push({ type: 'user', content: text })
+    game.sendPrepMessage(text)
+    scrollToBottom()
+    return
+  }
+
+  // 游戏中子模式：不允许对话
+  if (game.gameMode && game.subMode === 'playing') return
+
+  // 正常模式
   if (game.gameMode) {
     game.onUserMessage(text)
     messages.value.push({ type: 'user', content: text })
@@ -222,7 +233,7 @@ function handleStop() {
 
     <div class="flex-1 flex flex-col min-w-0">
       <!-- 游戏模式 -->
-      <GameCanvas v-if="game.gameMode" />
+      <GameCanvas v-if="game.gameMode" :session-name="store.activeName" @exited="loadHistory(store.activeName)" />
 
       <!-- 正常聊天模式 -->
       <div v-else ref="chatContainer" class="flex-1 overflow-y-auto px-6 py-4 space-y-3 chat-area">
@@ -255,9 +266,13 @@ function handleStop() {
       </div>
 
       <div class="px-5 py-3 border-t border-white/[0.03] bg-base-900/50" :class="{ 'border-accent/10': game.gameMode }">
-        <div class="max-w-3xl mx-auto flex items-end gap-3">
+        <div class="max-w-2xl mx-auto flex items-center gap-3">
           <div class="flex-1">
-            <ChatInput :disabled="!store.activeName" :placeholder="game.gameMode ? '在游戏中与 AI 对话...' : '输入消息，Enter 发送，Shift+Enter 换行...'" @send="handleSend" />
+            <ChatInput
+              :disabled="!store.activeName || (game.gameMode && game.subMode === 'playing')"
+              :placeholder="game.gameMode && game.subMode === 'playing' ? '游戏中，AI 自主回复中...' : game.gameMode ? '准备中，与 AI 讨论游戏...' : '输入消息，Enter 发送，Shift+Enter 换行...'"
+              @send="handleSend"
+            />
           </div>
           <button
             v-if="isStreaming"

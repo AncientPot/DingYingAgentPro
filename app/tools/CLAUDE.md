@@ -51,7 +51,14 @@
 
 - `list_game_tools()` — 发现 game_tools/ 下所有非 `_` 前缀模块
 - `load_game_tool(name)` — 加载指定游戏工具
-- 每个游戏工具需 `get_meta()`（元信息）+ `get_tool()`（工具实例）
+- 每个游戏工具需 `get_meta()`（元信息）+ `get_tool()`（工具实例）+ 可选 `test_tool()`
+- 游戏工具配置存储在 `game_tool_settings.{tool_name}` 中（think_prompt、obstacle_count 等）
+
+### 现有游戏工具
+
+| 模块 | 显示名 | 功能 |
+|------|--------|------|
+| `snake_game.py` | 贪吃蛇 | AI 放置食物/障碍物，前端 Canvas 游戏 |
 
 ## 添加新工具
 

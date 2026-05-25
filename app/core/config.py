@@ -27,8 +27,15 @@ _DEFAULT_CONFIG = {
     # 游戏模式设置
     "game_auto_reply_interval": 0,   # 默认关闭自主回复，0=关闭
     "game_enabled_tools": ["calculator"],
-    "game_active_tool": None,  # 当前选中的游戏工具名，None 表示未选择
-    "game_think_prompt": "你正处于游戏模式中，正在与用户一起进行互动游戏。请根据当前游戏状态自主推进游戏进程，主动描述场景、提出问题或给出反馈。保持回复简洁有趣。",
+    "game_active_tool": None,
+    "game_think_prompt": "你是游戏助手。根据游戏状态自主决策，使用游戏工具操作。回复必须精简（≤15字），直接行动。",
+    # 各游戏工具的专属设置
+    "game_tool_settings": {
+        "snake_game": {
+            "think_prompt": "你是贪吃蛇游戏助手。根据蛇的位置和状态决定生成食物或障碍物。食物放在蛇前方3-5格。维持目标障碍物数量。每次只操作一个。回复≤10字。",
+            "obstacle_count": 3,
+        }
+    },
 }
 
 _lock = threading.Lock()

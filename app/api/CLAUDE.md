@@ -56,5 +56,7 @@
 - `GET /game/tools` — 列出可用游戏工具（game_tools/ 目录）
 - `POST /game/start` — 准备中→游戏中
 - `POST /game/stop` — 游戏中→准备中
-- `POST /game/think` — AI 自主思考 SSE（仅 playing 子模式）
+- `POST /game/chat` — 准备中对话（使用 /prep 线程，与正常对话隔离）
+- `POST /game/think` — AI 自主思考 SSE（仅 playing，含游戏工具调用+执行）
+- `POST /game/gameover` — 游戏结束总结 → prep 线程 → 切换到准备中
 - `POST /game/exit` — 退出游戏模式

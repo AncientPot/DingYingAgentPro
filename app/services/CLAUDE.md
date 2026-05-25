@@ -29,3 +29,13 @@
 - `get_tools_status()` — 列出所有工具及启用状态
 - `set_tool_enabled(name, enabled)` — 修改 `enabled_tools` 列表 → `update_config` → 触发图重建
 - `test_tool(name)` — 代理到 `tools/__init__.py` 的 `test_tool`
+
+## game_service.py — 游戏状态
+
+内存级游戏状态管理，重启后重置。
+
+- `set_game_mode(active, game_type, base_tid)` — 进入/退出游戏 + 设置线程隔离
+- `set_sub_mode(mode)` — `preparing` / `playing`
+- `get_thread_for(mode)` — 获取 `prep`/`play` 线程 ID（与正常对话隔离）
+- `get_game_state()` — `{game_mode, game_type, sub_mode}`
+- 线程隔离：`base_tid`、`base_tid/prep`、`base_tid/play` 三个独立 checkpoint

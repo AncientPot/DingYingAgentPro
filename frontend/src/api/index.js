@@ -33,18 +33,22 @@ export const testTool = (name) => request('POST', `/tools/${encodeURIComponent(n
 // Game
 export const getGameState = () => request('GET', '/game/state')
 export const exitGame = () => request('POST', '/game/exit')
-export const gameStart = () => request('POST', '/game/start')
+export const gameStart = (baseTid = '') => request('POST', '/game/start', { base_tid: baseTid })
 export const gameStop = () => request('POST', '/game/stop')
+export const gameOver = (summary) => request('POST', '/game/gameover', { summary })
+export const gameChat = (message, baseTid = '') => request('POST', '/game/chat', { message, base_tid: baseTid })
 export const gameGetSettings = () => request('GET', '/game/settings')
 export const gameUpdateSettings = (data) => request('PUT', '/game/settings', data)
 export const gameGetTools = () => request('GET', '/game/tools')
 
-// Game think (SSE) — returns async generator
-export async function* gameThink(threadId, signal) {
+// Game think (SSE) — returns async generator, accepts optional game context
+export async function* gameThink(threadId, signal, context = null) {
+  const body = { thread_id: threadId }
+  if (context) body.context = context
   const r = await fetch('/api/game/think', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ thread_id: threadId }),
+    body: JSON.stringify(body),
     signal,
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)

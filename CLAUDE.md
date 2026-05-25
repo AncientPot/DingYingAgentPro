@@ -101,3 +101,14 @@ curl http://127.0.0.1:8000/api/tools
 - CSS 全局样式在 `style.css`（玻璃面板 `.glass`、toggle 开关 `.toggle-track/.toggle-thumb`、消息动画 `.msg-enter`）
 - Tailwind 自定义色板：`base-{900..700}` 背景层次，`accent` 电光青，`amber-tool` 工具调用色
 - 字体使用系统原生（微软雅黑/苹方），不依赖 Google Fonts
+
+### 游戏模式框架
+
+- 通过对话中表达游戏意图 → LLM 调用 `game_center` → 进入准备中子模式
+- **准备中**: 设置面板（游戏工具单选、AI 间隔、每工具专属设置）+ "开始游戏"按钮
+- **游戏中**: AI 自主回复（可配间隔）、输入禁用、设置不可调、"结束游戏"按钮
+- 退出时异步发送"退出游戏"消息触发 `game_center(stop)`
+- 三层提示词：全局 system_prompt → game_think_prompt → 工具 docstring
+- 三线程隔离：`{tid}`(对话) / `{tid}/prep`(准备) / `{tid}/play`(游戏)
+- 游戏工具在 `app/tools/game_tools/` 独立管理，单选启用
+- 首个游戏：贪吃蛇（40×40 Canvas，AI 用 `snake_game` 工具放置食物/障碍物）

@@ -43,7 +43,7 @@ core/         ← 基础设施：配置管理（JSON+热重载+脱敏）
 | `tools/` | [CLAUDE.md](tools/CLAUDE.md) | 工具插件加载器、开发规范、自检 |
 | `models/` | [CLAUDE.md](models/CLAUDE.md) | Pydantic Schema 定义 |
 | `services/` | [CLAUDE.md](services/CLAUDE.md) | 会话/配置/工具业务逻辑 |
-| `api/` | [CLAUDE.md](api/CLAUDE.md) | 全部 HTTP 路由（10 个端点） |
+| `api/` | [CLAUDE.md](api/CLAUDE.md) | 全部 HTTP 路由（含游戏模式 10 个端点） |
 
 ## main.py — 应用入口
 

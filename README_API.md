@@ -210,6 +210,23 @@ while (true) {
 
 **前端使用建议：** 工具管理页面为每个工具提供"测试"按钮，调用此接口展示绿色通过/红色失败状态，让用户和 AI 都能感知哪个工具当前可用。
 
+### 5. 游戏模式
+
+| 方法 | 路由 | 说明 |
+|------|------|------|
+| `GET` | `/api/game/state` | 获取游戏状态 |
+| `GET` | `/api/game/settings` | 获取游戏设置 |
+| `PUT` | `/api/game/settings` | 更新游戏设置 |
+| `GET` | `/api/game/tools` | 列出可用游戏工具 |
+| `POST` | `/api/game/start` | 开始游戏（需 `base_tid`） |
+| `POST` | `/api/game/stop` | 停止游戏 |
+| `POST` | `/api/game/chat` | 准备中对话（隔离线程） |
+| `POST` | `/api/game/think` | AI 自主思考 SSE（含工具执行） |
+| `POST` | `/api/game/gameover` | 游戏结束总结 → 准备中 |
+| `POST` | `/api/game/exit` | 退出游戏模式 |
+
+游戏设置包含全局字段（`auto_reply_interval`、`active_game_tool`）和每工具专属字段（`tool_think_prompt`、`tool_obstacle_count`），后者存储在 `game_tool_settings.{tool_name}` 中。
+
 ---
 
 ## 工具插件开发指南

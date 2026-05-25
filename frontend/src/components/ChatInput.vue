@@ -35,13 +35,13 @@ function autoResize() {
 </script>
 
 <template>
-  <div class="flex items-end gap-3 px-4 py-3 glass border-white/[0.10] rounded-2xl transition-all duration-200 focus-within:border-accent/40 focus-within:shadow-[0_0_25px_rgba(0,229,255,0.08)]">
+  <div class="flex items-center gap-2.5 px-3.5 py-2.5 glass border-white/[0.08] rounded-2xl transition-all duration-300 focus-within:border-accent/40 focus-within:shadow-[0_0_30px_rgba(0,229,255,0.06)]">
     <textarea
       ref="textarea"
       v-model="input"
       rows="1"
       :disabled="disabled"
-      class="flex-1 bg-transparent text-sm text-white/85 placeholder-white/20 resize-none max-h-40 font-mono leading-relaxed glass-input"
+      class="flex-1 bg-transparent text-[13px] text-white/80 placeholder-white/20 resize-none max-h-40 font-mono leading-relaxed outline-none border-0 my-0.5"
       :class="disabled ? 'opacity-40 cursor-not-allowed' : ''"
       :placeholder="placeholder"
       @keydown="handleKeydown"
@@ -49,10 +49,10 @@ function autoResize() {
     ></textarea>
     <button
       :disabled="disabled || !input.trim()"
-      class="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200"
+      class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200"
       :class="input.trim() && !disabled
-        ? 'bg-accent/20 text-accent hover:bg-accent/30 hover:glow-accent active:scale-95'
-        : 'bg-white/[0.06] text-white/20 cursor-not-allowed'"
+        ? 'bg-accent/20 text-accent hover:bg-accent/30 hover:shadow-[0_0_15px_rgba(0,229,255,0.2)] active:scale-90'
+        : 'bg-white/[0.05] text-white/15 cursor-not-allowed'"
       @click="handleSend"
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
